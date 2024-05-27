@@ -2,6 +2,7 @@ package lt.jb.aero.flight
 
 import lt.jb.aero.flight.db.FlightRepository
 import lt.jb.aero.flight.exception.FlightNotFoundException
+import lt.jb.aero.flight.exception.FlightNotUniqueException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeEach
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.test.assertNull
 
@@ -75,6 +77,40 @@ class FlightServiceTest {
     }
 
     @Test
+    fun `registering departure of a flight number, which has multiple scheduled flights - earliest flight departs`() {
+        val flight1 = FlightDataFactory.generateFlightEntity(estimatedDepartureTime = LocalDateTime.now())
+        flightRepository.save(flight1)
+        val flight2 = FlightDataFactory.generateFlightEntity(estimatedDepartureTime = LocalDateTime.now().plusDays(1))
+        flightRepository.save(flight2)
+        val flight3 = FlightDataFactory.generateFlightEntity(estimatedDepartureTime = LocalDateTime.now().plusDays(2))
+        flightRepository.save(flight3)
+
+        val savedEntity = flightService.registerDeparture(flight1.flightNumber)
+
+        assertEquals(flight1.flightNumber, savedEntity.flightNumber)
+        assertEquals(flight1.aircraftType, savedEntity.aircraftType)
+        assertEquals(flight1.origin, savedEntity.origin)
+        assertEquals(flight1.destination, savedEntity.destination)
+        assertNotNull(savedEntity.estimatedArrivalTime)
+        assertEquals(LocalDate.now(), savedEntity.estimatedDepartureTime.toLocalDate())
+        assertNotNull(savedEntity.actualDepartureTime)
+        assertNull(savedEntity.actualArrivalTime)
+        assertEquals(FlightStatus.DEPARTED, savedEntity.status)
+    }
+
+    @Test
+    fun `registering departure of already departed flight throws FlightNotUniqueException`() {
+        val scheduledFlight = FlightDataFactory.generateFlightEntity()
+        flightRepository.save(scheduledFlight)
+
+        flightService.registerDeparture(scheduledFlight.flightNumber)
+
+        assertThrows<FlightNotUniqueException> {
+            flightService.registerDeparture(scheduledFlight.flightNumber)
+        }
+    }
+
+    @Test
     fun `registering departure of not scheduled flight throws FlightNotFoundException`() {
         assertThrows<FlightNotFoundException> {
             flightService.registerDeparture("XX-XXX")
@@ -117,7 +153,7 @@ class FlightServiceTest {
         val scheduledFlight = FlightDataFactory.generateFlightEntity()
         flightRepository.save(scheduledFlight)
 
-        val flightStatus = flightService.getFlightStatus("ABC123")
+        val flightStatus = flightService.getFlightStatus("ABC123", null)
         assertEquals(FlightStatus.SCHEDULED, flightStatus)
     }
 
@@ -127,31 +163,8 @@ class FlightServiceTest {
         flightRepository.save(scheduledFlight)
 
         assertThrows<FlightNotFoundException> {
-            flightService.getFlightStatus("XXX")
+            flightService.getFlightStatus("XXX", null)
         }
-    }
-
-    @Test
-    fun `getting flight by number returns flight by today's departure date if there are multiple flights with same flight number`() {
-        val oldFlight = FlightDataFactory.generateFlightEntity(
-            estimatedDepartureTime = LocalDateTime.now().minusDays(1),
-            estimatedArrivalTime = LocalDateTime.now().minusDays(1),
-            status = FlightStatus.ARRIVED
-        )
-        flightRepository.save(oldFlight)
-        val scheduledFlight = FlightDataFactory.generateFlightEntity()
-        flightRepository.save(scheduledFlight)
-
-        val result = flightService.getFlightByNumber("ABC123")
-        assertEquals(scheduledFlight.flightNumber, result.flightNumber)
-        assertEquals(scheduledFlight.aircraftType, result.aircraftType)
-        assertEquals(scheduledFlight.origin, result.origin)
-        assertEquals(scheduledFlight.destination, result.destination)
-        assertNotNull(result.estimatedArrivalTime)
-        assertNotNull(result.estimatedDepartureTime)
-        assertNull(result.actualDepartureTime)
-        assertNull(result.actualArrivalTime)
-        assertEquals(FlightStatus.SCHEDULED, result.status)
     }
 
     @Test

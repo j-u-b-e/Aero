@@ -28,7 +28,7 @@ class TerminalServiceTest {
     }
 
     @Test
-    fun `multiple fligts added to the list - one terminal picks first flight`() = runTest {
+    fun `multiple flights added to the list - one terminal picks first flight`() = runTest {
         terminalService.addToArrivalList("AA123")
         terminalService.addToArrivalList("BB123")
 

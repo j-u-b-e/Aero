@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Repository
@@ -13,18 +14,18 @@ interface FlightRepository : JpaRepository<Flight, Long> {
     fun findByDestination(destination: String): List<Flight>
     fun findByOriginAndDestination(origin: String, destination: String): List<Flight>
     fun findByStatus(status: FlightStatus): List<Flight>
+    fun findByStatusAndFlightNumber(status: FlightStatus, flightNumber: String): Flight?
 
-    @Query("SELECT f FROM Flight f WHERE f.flightNumber = :flightNumber AND f.status = :status ORDER BY f.estimatedDepartureTime DESC")
+    @Query("SELECT f FROM Flight f WHERE f.flightNumber = :flightNumber AND f.status = :status ORDER BY f.estimatedDepartureTime ASC")
     fun findMostRecentFlightByFlightNumberAndStatus(
         @Param("flightNumber") flightNumber: String,
         @Param("status") status: FlightStatus
-    ): Flight?
+    ): List<Flight>
 
-    @Query("SELECT f FROM Flight f WHERE f.flightNumber = :flightNumber AND f.estimatedDepartureTime BETWEEN :startOfDay AND :endOfDay")
-    fun findByFlightNumberAndEstimatedDepartureDate(
+    @Query("SELECT f FROM Flight f WHERE f.flightNumber = :flightNumber AND CAST(f.estimatedDepartureTime AS DATE) = :date ORDER BY f.estimatedDepartureTime ASC")
+    fun findMostRecentFlightByFlightNumberAndDate(
         @Param("flightNumber") flightNumber: String,
-        @Param("startOfDay") startOfDay: LocalDateTime,
-        @Param("endOfDay") endOfDay: LocalDateTime
-    ): Flight?
+        @Param("date") date: LocalDate
+    ): List<Flight>
 
 }

@@ -3,13 +3,13 @@ package lt.jb.aero.flight
 import kotlinx.coroutines.runBlocking
 import lt.jb.aero.flight.db.FlightRepository
 import lt.jb.aero.flight.exception.FlightNotFoundException
+import lt.jb.aero.flight.exception.FlightNotUniqueException
 import lt.jb.aero.flight.rest.dto.CreateFlightDto
 import lt.jb.aero.flight.rest.dto.FlightDto
 import lt.jb.aero.terminal.TerminalService
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.LocalTime
 import java.util.logging.Logger
 
 @Service
@@ -31,7 +31,13 @@ class FlightService(private val flightRepository: FlightRepository, private val 
     }
 
     fun registerDeparture(flightNumber: String): FlightDto {
+        val existingFlight = flightRepository.findByStatusAndFlightNumber(FlightStatus.DEPARTED, flightNumber)
+        if (existingFlight != null) {
+            throw FlightNotUniqueException("Flight with same flight number is already departed. FlightNumber=$flightNumber")
+        }
+
         val flight = flightRepository.findMostRecentFlightByFlightNumberAndStatus(flightNumber, FlightStatus.SCHEDULED)
+            .firstOrNull()
             ?: throw FlightNotFoundException("Flight not found: $flightNumber")
 
         flight.actualDepartureTime = LocalDateTime.now()
@@ -44,6 +50,7 @@ class FlightService(private val flightRepository: FlightRepository, private val 
 
     fun registerArrival(flightNumber: String): FlightDto {
         val flight = flightRepository.findMostRecentFlightByFlightNumberAndStatus(flightNumber, FlightStatus.DEPARTED)
+            .firstOrNull()
             ?: throw FlightNotFoundException("Flight not found: $flightNumber")
         flight.actualArrivalTime = LocalDateTime.now()
         flight.status = FlightStatus.ARRIVED
@@ -61,19 +68,10 @@ class FlightService(private val flightRepository: FlightRepository, private val 
         return flightRepository.findAll().map { it.toDto() }
     }
 
-    fun getFlightStatus(flightNumber: String): FlightStatus {
-        return getFlightByNumber(flightNumber).status
-    }
+    fun getFlightStatus(flightNumber: String, departureDate: LocalDate?): FlightStatus {
+        val queryDate = departureDate ?: LocalDate.now()
 
-    fun getFlightByNumber(flightNumber: String): FlightDto {
-        return getFlightByNumberAndByDepartureDate(flightNumber, LocalDate.now())
-    }
-
-    //If there are more scheduled flights, then we need to find flight which is departing today.
-    private fun getFlightByNumberAndByDepartureDate(flightNumber: String, departureDate: LocalDate): FlightDto {
-        val startOfDay = departureDate.atStartOfDay()
-        val endOfDay = departureDate.atTime(LocalTime.MAX)
-        return flightRepository.findByFlightNumberAndEstimatedDepartureDate(flightNumber, startOfDay, endOfDay)?.toDto()
+        return flightRepository.findMostRecentFlightByFlightNumberAndDate(flightNumber, queryDate).firstOrNull()?.status
             ?: throw FlightNotFoundException("Flight not found: $flightNumber")
     }
 

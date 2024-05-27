@@ -7,6 +7,7 @@ import lt.jb.aero.flight.rest.dto.FlightDto
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.time.LocalDate
 import java.util.logging.Logger
 
 @RestController
@@ -28,12 +29,15 @@ class FlightController(val flightService: FlightService) {
     }
 
     @GetMapping("/{flightNumber}/status")
-    fun getFlightStatus(@PathVariable flightNumber: String): ResponseEntity<FlightStatus> {
-        logger.info("Started GET request for flight status by flight number. Flight number=$flightNumber.")
+    fun getFlightStatus(
+        @PathVariable flightNumber: String,
+        @RequestParam("date", required = false) queryDate: LocalDate?
+    ): ResponseEntity<FlightStatus> {
+        logger.info("Started GET request for flight status by flight number. Flight number=$flightNumber, date=$queryDate.")
 
-        val flightStatus = flightService.getFlightStatus(flightNumber)
+        val flightStatus = flightService.getFlightStatus(flightNumber, queryDate)
 
-        logger.info("Finished GET request for flight status by flight number. Flight number=$flightNumber.")
+        logger.info("Finished GET request for flight status by flight number. Flight number=$flightNumber, date=$queryDate.")
         return ResponseEntity(flightStatus, HttpStatus.OK)
     }
 

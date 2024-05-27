@@ -3,6 +3,7 @@ package lt.jb.aero.flight
 import com.fasterxml.jackson.databind.ObjectMapper
 import lt.jb.aero.flight.exception.FlightNotFoundException
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
@@ -45,7 +46,7 @@ class FlightControllerTest {
 
     @Test
     fun `get flight status by flight number returns flight status and 200 http code`() {
-        `when`(flightService.getFlightStatus(anyString())).thenReturn(FlightStatus.SCHEDULED)
+        `when`(flightService.getFlightStatus(anyString(), any())).thenReturn(FlightStatus.SCHEDULED)
 
         mockMvc.get("/api/flights/ABC123/status")
             .andExpect {

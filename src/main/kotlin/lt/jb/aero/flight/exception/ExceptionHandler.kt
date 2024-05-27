@@ -22,6 +22,14 @@ class ExceptionHandler {
     }
 
     @ExceptionHandler
+    fun handleFlightNotUniqueException(ex: FlightNotUniqueException): ResponseEntity<ErrorMessage> {
+        logger.info("Caught FlightNotUniqueException. Message=${ex.message}")
+
+        val errorMessage = ErrorMessage(HttpStatus.BAD_REQUEST.value(), ex.message!!)
+        return ResponseEntity(errorMessage, HttpStatus.BAD_REQUEST)
+    }
+
+    @ExceptionHandler
     fun handleIllegalArgumentException(ex: IllegalArgumentException): ResponseEntity<ErrorMessage> {
         logger.info("Caught IllegalArgumentException. Message=${ex.message}")
 
